@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TOBB ETU - Ma'lumotlar bazasi</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">
+          <img id="brandLogo" alt="TOBB ETU logo" />
+          <span id="brandFallback">ETU</span>
+        </div>
+        <div>
+          <p class="brand-kicker">Knowledge desk</p>
+          <h1 id="brandName">TOBB ETU</h1>
+        </div>
+      </div>
+
+      <nav class="section-nav" aria-label="Bo'limlar">
+        <button class="section-tab active" type="button" data-section="script">
+          <i data-lucide="book-open-text"></i>
+          <span>Script</span>
+          <small id="scriptCount">0</small>
+        </button>
+        <button class="section-tab" type="button" data-section="sales">
+          <i data-lucide="graduation-cap"></i>
+          <span>Sotuv</span>
+          <small id="salesCount">0</small>
+        </button>
+        <button class="section-tab active" type="button" data-section="problem">
+          <i data-lucide="book-open-text"></i>
+          <span>E'tirozlar bilan ishlash</span>
+          <small id="problemCount">0</small>
+        </button>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      <header class="workspace-header">
+        <div class="title-stack">
+          <p class="eyebrow" id="sectionEyebrow">TOBB ETU bazasi</p>
+          <h2 id="sectionTitle">Script</h2>
+        </div>
+
+        <div class="header-actions">
+          <button class="icon-button" type="button" id="refreshBtn" title="Yangilash" aria-label="Yangilash">
+            <i data-lucide="refresh-cw"></i>
+          </button>
+          <button class="action-button primary admin-only hidden" type="button" id="addBtn">
+            <i data-lucide="plus"></i>
+            <span>Qo'shish</span>
+          </button>
+          <button class="action-button subtle admin-only hidden" type="button" id="importBtn">
+            <i data-lucide="file-text"></i>
+            <span>Word</span>
+          </button>
+          <input id="wordInput" class="hidden" type="file" accept=".doc,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+          <button class="action-button dark" type="button" id="loginBtn">
+            <i data-lucide="lock-keyhole"></i>
+            <span>Edit</span>
+          </button>
+          <button class="action-button dark hidden" type="button" id="logoutBtn">
+            <i data-lucide="log-out"></i>
+            <span>Chiqish</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="control-band" aria-label="Qidiruv va holat">
+        <label class="search-field">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" placeholder="Qidiruv..." autocomplete="off" />
+        </label>
+        <div class="summary-pill">
+          <i data-lucide="database"></i>
+          <span id="itemsCount">0 ta ma'lumot</span>
+        </div>
+        <div class="summary-pill accent">
+          <i data-lucide="clock-3"></i>
+          <span id="lastUpdated">Yangilanmagan</span>
+        </div>
+      </section>
+
+      <section id="loadingBox" class="state-box hidden">
+        <i data-lucide="loader"></i>
+        <h3>Yuklanmoqda...</h3>
+        <p>Ma'lumotlar Supabase bazasidan olinmoqda.</p>
+      </section>
+
+      <section id="emptyBox" class="state-box hidden">
+        <i data-lucide="inbox"></i>
+        <h3>Hozircha ma'lumot yo'q</h3>
+        <p>Edit rejimida karta qo'shing yoki Word fayl import qiling.</p>
+      </section>
+
+      <section class="cards-grid" id="cardsList" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="codeModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="codeModalTitle">
+      <div class="modal-head">
+        <h2 id="codeModalTitle">Edit kodi</h2>
+        <button class="icon-button modal-close" type="button" data-close="codeModal" aria-label="Yopish">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <p class="modal-note">Ma'lumot qo'shish, tahrirlash va Word import qilish uchun kodni kiriting.</p>
+      <label class="field">
+        <span>Kod</span>
+        <input type="password" id="adminCodeInput" placeholder="Kodni kiriting" />
+      </label>
+      <button class="action-button primary full" type="button" id="adminLoginSubmit">
+        <i data-lucide="unlock"></i>
+        <span>Kirish</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="formModal" aria-hidden="true">
+    <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="formModalTitle">
+      <div class="modal-head">
+        <h2 id="formModalTitle">Yangi ma'lumot</h2>
+        <button class="icon-button modal-close" type="button" data-close="formModal" aria-label="Yopish">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="itemId" />
+
+      <div class="form-grid">
+        <label class="field">
+          <span>Bo'lim</span>
+          <select id="itemSection">
+            <option value="script">Script</option>
+            <option value="sales">Sotuv</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Tartib raqami</span>
+          <input id="itemSort" type="number" value="0" />
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Sarlavha</span>
+        <input id="itemTitle" type="text" placeholder="Masalan: Universitet haqida" />
+      </label>
+
+      <label class="field">
+        <span>Ma'lumot</span>
+        <textarea id="itemContent" placeholder="Ma'lumot matnini shu yerga yozing..."></textarea>
+      </label>
+
+      <button class="action-button primary full" type="button" id="saveBtn">
+        <i data-lucide="save"></i>
+        <span>Saqlash</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="deleteModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+      <div class="modal-head">
+        <h2 id="deleteModalTitle">O'chirish</h2>
+        <button class="icon-button modal-close" type="button" data-close="deleteModal" aria-label="Yopish">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <p class="modal-note">Bu ma'lumot bazadan o'chiriladi. Davom etasizmi?</p>
+      <div class="modal-actions">
+        <button class="action-button subtle" type="button" data-close="deleteModal">
+          <span>Bekor qilish</span>
+        </button>
+        <button class="action-button danger" type="button" id="confirmDeleteBtn">
+          <i data-lucide="trash-2"></i>
+          <span>O'chirish</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status">
+    <span id="toastText"></span>
+    <button type="button" id="hideToastBtn" aria-label="Yopish">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+</body>
+</html>
